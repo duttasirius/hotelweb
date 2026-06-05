@@ -12,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 app.use(clerkMiddleware());
 
-app.use("/api/clerk", clerkWebhooks);
+app.post("/api/clerk", clerkWebhooks);
 
 // db connection
 await connectDB();
