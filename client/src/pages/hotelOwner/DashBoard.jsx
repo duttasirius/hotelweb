@@ -1,6 +1,10 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Title from "../../components/Title";
-import { assets, dashboardDummyData } from "../../assets/assets";
+import { useAppContext } from "../../context/AppContex";
+import axios from "axios";
+import { assets } from "../../assets/assets";
+
+// import { assets, dashboardDummyData } from "../../assets/assets";
 
 // table = container
 // tr    = row
@@ -13,7 +17,43 @@ import { assets, dashboardDummyData } from "../../assets/assets";
 //      └─ th / td
 
 const DashBoard = () => {
-  const [dashBoardData] = useState(dashboardDummyData);
+  const {
+    navigate,
+    user,
+    getToken,
+    isOwner,
+    setIsOwner,
+    showHotelReg,
+    setShowHotelReg,
+    searchedCities,
+    setSearchedCities,
+  } = useAppContext();
+
+  const [dashBoardData, setDashboardData] = useState({
+    bookings: [],
+    totalBookings: 0,
+    totalRevenue: 0,
+  });
+
+  const fetchDashboardData = async () => {
+    try {
+      const token = await getToken();
+
+      const { data } = await axios.get("/api/bookings/hotel", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setDashboardData(data.dashBoardData);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   return (
     <div>

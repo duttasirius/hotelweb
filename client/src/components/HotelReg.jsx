@@ -1,11 +1,62 @@
-import React from "react";
+import React, { useState } from "react";
 import { assets, cities } from "../assets/assets";
+import { useAppContext } from "../context/AppContex";
+import toast from "react-hot-toast";
+import { data } from "react-router-dom";
+import axios from "axios";
 
 const HotelReg = () => {
+  const { setShowHotelReg, getToken, axios, isOwner, setIsOwner } =
+    useAppContext();
+
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [contact, setContact] = useState("");
+
+  const onSubmitHandler = async (event) => {
+    event.preventDefault();
+
+    console.log("onSubmit fired");
+
+    try {
+      console.log("Before token");
+
+      const token = await getToken();
+
+      console.log("Token:", token);
+
+      const { data } = await axios.post(
+        "/api/hotels",
+        { name, address, contact, city },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      console.log("Response:", data);
+
+      if (data.success) {
+        toast.success(data.message);
+        setIsOwner(true);
+        setShowHotelReg(false);
+      }
+    } catch (error) {
+      console.log("ERROR:", error);
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4">
       {/* can divide done by using grid grid-cols-[1fr_1fr] or md:w1/2 */}
-      <form className="relative w-full max-w-4xl bg-white rounded-3xl overflow-hidden shadow-2xl grid md:grid-cols-2">
+      <form
+        onSubmit={onSubmitHandler}
+        onClick={(e) => e.stopPropagation}
+        className="relative w-full max-w-4xl bg-white rounded-3xl overflow-hidden shadow-2xl grid md:grid-cols-2"
+      >
         {/* Left Image */}
         <div className="hidden md:block">
           <img
@@ -22,7 +73,12 @@ const HotelReg = () => {
             type="button"
             className="absolute top-5 right-5 p-2 rounded-full hover:bg-gray-100 transition"
           >
-            <img src={assets.closeIcon} alt="Close" className="w-5 h-5" />
+            <img
+              onClick={() => setShowHotelReg(false)}
+              src={assets.closeIcon}
+              alt="Close"
+              className="w-5 h-5"
+            />
           </button>
 
           <h2 className="text-3xl font-bold text-gray-900">
@@ -45,6 +101,8 @@ const HotelReg = () => {
               </label>
 
               <input
+                onChange={(e) => setName(e.target.value)}
+                value={name}
                 id="name"
                 type="text"
                 placeholder="Enter hotel name"
@@ -63,6 +121,8 @@ const HotelReg = () => {
               </label>
 
               <input
+                onChange={(e) => setContact(e.target.value)}
+                value={contact}
                 id="contact"
                 type="tel"
                 placeholder="Enter phone number"
@@ -81,6 +141,8 @@ const HotelReg = () => {
               </label>
 
               <input
+                onChange={(e) => setAddress(e.target.value)}
+                value={address}
                 id="address"
                 type="text"
                 placeholder="Enter hotel address"
@@ -99,6 +161,8 @@ const HotelReg = () => {
               </label>
 
               <select
+                onChange={(e) => setCity(e.target.value)}
+                value={city}
                 id="city"
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -114,6 +178,7 @@ const HotelReg = () => {
 
             {/* Submit Button */}
             <button
+              onClick={() => console.log("Button clicked")}
               type="submit"
               className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 transition"
             >

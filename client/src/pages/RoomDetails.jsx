@@ -1,27 +1,105 @@
 import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import {
-  assets,
-  facilityIcons,
-  roomCommonData,
-  roomsDummyData,
-} from "../assets/assets";
+import { data, useParams } from "react-router-dom";
+import { assets, facilityIcons, roomCommonData } from "../assets/assets";
 import StarRating from "../components/StarRating";
+import { useAppContext } from "../context/AppContex";
+import toast from "react-hot-toast";
+import axios from "axios";
 
 const RoomDetails = () => {
   const { id } = useParams();
 
+  const {
+    navigate,
+    user,
+    getToken,
+    isOwner,
+    setIsOwner,
+    showHotelReg,
+    setShowHotelReg,
+    searchedCities,
+    setSearchedCities,
+
+    rooms,
+    setRooms,
+  } = useAppContext();
+
+  const [checkInDate, setCheckInDate] = useState(null);
+  const [checkOutDate, setCheckOutDate] = useState(null);
+  const [isAvailable, setIsAvailable] = useState(false);
+  const [guest, setGuest] = useState(1);
   const [room, setRoom] = useState(null);
   const [mainImage, setMainImage] = useState("");
 
+  const checkAvailability = async () => {
+    try {
+      if (new Date(checkInDate) >= new Date(checkOutDate)) {
+        toast.error("CHECK-IN DATE SHOULD BE BEFORE CHECK-OUT DATE");
+        return;
+      }
+
+      const { data } = await axios.post("/api/bookings/check-availability", {
+        room: id,
+        checkInDate,
+        checkOutDate,
+      });
+
+      if (data.success) {
+        setIsAvailable(true);
+        toast.success("ROOM IS AVAILABLE");
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+
+    try {
+      const token = await getToken();
+
+      if (!isAvailable) {
+        return checkAvailability();
+      } else {
+        const { data } = await axios.post(
+          "/api/bookings/book",
+          {
+            room: id,
+            checkInDate,
+            checkOutDate,
+            guest,
+            paymentMethod: "Pay At Hotel",
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          },
+        );
+
+        if (data.success) {
+          toast.success(data.message);
+          navigate("/my-bookings");
+        }
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  //******************** */
+
   useEffect(() => {
-    const selectedRoom = roomsDummyData.find((room) => room._id === id);
+    const selectedRoom = rooms.find((room) => room._id === id);
 
     if (selectedRoom) {
       setRoom(selectedRoom);
       setMainImage(selectedRoom.images[0]);
     }
-  }, [id]);
+  }, [id, rooms]);
 
   if (!room) {
     return (
@@ -117,7 +195,7 @@ const RoomDetails = () => {
           <p className="text-gray-500 mt-2">Per Night</p>
 
           <button className="w-full mt-6 bg-blue-600 text-white py-3 rounded-xl font-medium hover:bg-blue-700 transition">
-            Reserve Room
+            {isAvailable ? "Book Now" : "Check Availability"}
           </button>
         </div>
       </div>
@@ -205,7 +283,10 @@ const RoomDetails = () => {
           Check Availability
         </h2>
 
-        <form className="bg-white border border-gray-200 rounded-3xl shadow-xl p-8">
+        <form
+          onSubmit={onSubmitHandler}
+          className="bg-white border border-gray-200 rounded-3xl shadow-xl p-8"
+        >
           <div className="grid md:grid-cols-4 gap-5">
             <div className="flex flex-col">
               <label
@@ -214,8 +295,14 @@ const RoomDetails = () => {
               >
                 Check In
               </label>
+              {/* Get today's date in YYYY-MM-DD format for < type="date">
+ Example:
+ new Date().toISOString() => "2026-06-12T13:15:30.123Z"
+ .split("T")[0]          => "2026-06-12" */}
 
               <input
+                onChange={(e) => setCheckInDate(e.target.value)}
+                min={new Date().toISOString().split("T")[0]}
                 id="checkIn"
                 type="date"
                 className="border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -231,6 +318,9 @@ const RoomDetails = () => {
               </label>
 
               <input
+                onChange={(e) => setCheckOutDate(e.target.value)}
+                min={checkInDate}
+                disabled={!checkInDate}
                 id="checkOut"
                 type="date"
                 className="border border-gray-300 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
@@ -246,6 +336,8 @@ const RoomDetails = () => {
               </label>
 
               <input
+                onChange={(e) => setGuest(e.target.value)}
+                value={guest}
                 id="guests"
                 type="number"
                 min="1"
@@ -259,7 +351,7 @@ const RoomDetails = () => {
                 type="submit"
                 className="w-full bg-blue-600 text-white rounded-xl px-6 py-3 hover:bg-blue-700 transition"
               >
-                Check Availability
+                {isAvailable ? "Book Now" : "Check Availability"}
               </button>
             </div>
           </div>

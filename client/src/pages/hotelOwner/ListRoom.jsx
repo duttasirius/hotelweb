@@ -1,9 +1,77 @@
-import React, { useState } from "react";
-import { roomsDummyData } from "../../assets/assets";
+import React, { useEffect, useState } from "react";
+
 import Title from "../../components/Title";
+import axios from "axios";
+import { useAppContext } from "../../context/AppContex";
+import toast from "react-hot-toast";
 
 const ListRoom = () => {
-  const [rooms, setRooms] = useState(roomsDummyData);
+  const [rooms, setRooms] = useState([]);
+  const { user, getToken } = useAppContext();
+
+  // fetch room
+  const fetchRooms = async () => {
+    try {
+      const token = await getToken();
+
+      const { data } = await axios.get("/api/room/owner", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (data.success) {
+        setRooms(data.rooms);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error);
+    }
+  };
+
+  const handleToggle = async (id) => {
+    try {
+      const token = await getToken();
+
+      const { data } = await axios.post(
+        "/api/room/toggle-availability",
+        { roomId: id },
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+
+      if (data.success) {
+        const updatedRooms = rooms.map((room) => {
+          // Loop through every room in the rooms array
+
+          if (room._id === id) {
+            // Check if this room's ID matches the room we want to update
+
+            return {
+              ...room,
+              // Copy all existing properties of the room
+              // (_id, roomType, pricePerNight, etc.)
+
+              isAvailable: !room.isAvailable,
+              // Change isAvailable to the opposite value
+              // true  -> false
+              // false -> true
+            };
+          }
+
+          return room;
+          // If the ID doesn't match, return the room unchanged
+        });
+
+        setRooms(updatedRooms);
+        toast.success(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.error(error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
 
   return (
     <div className="mt-6 overflow-x-auto bg-white rounded-xl shadow-sm border border-gray-200 ">

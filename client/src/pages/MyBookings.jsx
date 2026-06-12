@@ -1,9 +1,51 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Title from "../components/Title";
 import { assets, userBookingsDummyData } from "../assets/assets";
+import { useAppContext } from "../context/AppContex";
+import axios from "axios";
+import toast from "react-hot-toast";
+import { data } from "react-router-dom";
 
 const MyBookings = () => {
-  const [booking, setBooking] = useState(userBookingsDummyData);
+  const {
+    navigate,
+    user,
+    getToken,
+    isOwner,
+    setIsOwner,
+    showHotelReg,
+    setShowHotelReg,
+    searchedCities,
+    setSearchedCities,
+
+    rooms,
+    setRooms,
+  } = useAppContext();
+
+  const [booking, setBooking] = useState([]);
+
+  const fetchBooking = async () => {
+    try {
+      const token = await getToken();
+
+      const { data } = await axios.get("/api/bookings/user", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (data.success) {
+        setBooking(data.bookings);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
+  useEffect(() => {
+    fetchBooking();
+  }, []);
 
   return (
     <div className="mt-20">

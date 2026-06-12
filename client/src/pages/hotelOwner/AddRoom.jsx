@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import Title from "../../components/Title";
+import axios from "axios";
+import { useAppContext } from "../../context/AppContex";
+import toast from "react-hot-toast";
 
 const AddRoom = () => {
   const [image1, setImage1] = useState(null);
@@ -7,8 +10,84 @@ const AddRoom = () => {
   const [image3, setImage3] = useState(null);
   const [image4, setImage4] = useState(null);
 
+  const [roomType, setRoomType] = useState("");
+  const [pricePerNight, setPricePerNight] = useState("");
+  const [amenities, setAmenities] = useState([]);
+  const [description, setDescription] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleAmenityChange = (e) => {
+    const { value, checked } = e.target;
+
+    if (checked) {
+      setAmenities((prev) => [...prev, value]);
+    } else {
+      setAmenities((prev) => prev.filter((item) => item !== value));
+    }
+  };
+
+  const { navigate, user, getToken, isOwner } = useAppContext();
+
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+
+      formData.append("roomType", roomType);
+      formData.append("pricePerNight", pricePerNight);
+      formData.append("description", description);
+      formData.append("amenities", JSON.stringify(amenities));
+
+      if (image1) formData.append("images", image1);
+      if (image2) formData.append("images", image2);
+      if (image3) formData.append("images", image3);
+      if (image4) formData.append("images", image4);
+
+      const token = await getToken();
+
+      console.log("roomType", roomType);
+      console.log("pricePerNight", pricePerNight);
+      console.log("description", description);
+      console.log("amenities", amenities);
+      console.log("image1", image1);
+      console.log("TOKEN", token);
+
+      const { data } = await axios.post("/api/room", formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (data.success) {
+        toast.success(data.message);
+
+        setRoomType("");
+        setPricePerNight("");
+        setDescription("");
+        setAmenities([]);
+
+        setImage1(null);
+        setImage2(null);
+        setImage3(null);
+        setImage4(null);
+      }
+    } catch (error) {
+      console.log(error);
+
+      toast.error(error.response?.data?.message || error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <form className="max-w-3xl bg-white p-6 rounded-xl shadow-md mb-20">
+    <form
+      onSubmit={onSubmitHandler}
+      className="max-w-3xl bg-white p-6 rounded-xl shadow-md mb-20"
+    >
       <Title
         title={"Add New Room"}
         subTitle={
@@ -101,7 +180,11 @@ const AddRoom = () => {
 
         {/* size can increase decrease with max-w-70 */}
 
-        <select className="w-full max-w-80 border border-gray-300 rounded-lg p-3 outline-none focus:border-blue-500">
+        <select
+          onChange={(e) => setRoomType(e.target.value)}
+          value={roomType}
+          className="w-full max-w-80 border border-gray-300 rounded-lg p-3 outline-none focus:border-blue-500"
+        >
           <option>Select Room Type</option>
           <option>Single Bed</option>
           <option>Double Bed</option>
@@ -115,6 +198,8 @@ const AddRoom = () => {
         <label className="block mb-2 font-medium">Price Per Night</label>
 
         <input
+          onChange={(e) => setPricePerNight(e.target.value)}
+          value={pricePerNight}
           type="number"
           placeholder="Enter room price"
           className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:border-blue-500"
@@ -127,27 +212,47 @@ const AddRoom = () => {
 
         <div className="grid md:grid-cols-2 gap-3">
           <label className="flex items-center gap-2">
-            <input type="checkbox" />
+            <input
+              value="Free Wifi"
+              type="checkbox"
+              onChange={handleAmenityChange}
+            />
             Free Wifi
           </label>
 
           <label className="flex items-center gap-2">
-            <input type="checkbox" />
+            <input
+              value="Free Breakfast"
+              onChange={handleAmenityChange}
+              type="checkbox"
+            />
             Free Breakfast
           </label>
 
           <label className="flex items-center gap-2">
-            <input type="checkbox" />
+            <input
+              value="Room Service"
+              onChange={handleAmenityChange}
+              type="checkbox"
+            />
             Room Service
           </label>
 
           <label className="flex items-center gap-2">
-            <input type="checkbox" />
+            <input
+              value="Mountain View"
+              onChange={handleAmenityChange}
+              type="checkbox"
+            />
             Mountain View
           </label>
 
           <label className="flex items-center gap-2">
-            <input type="checkbox" />
+            <input
+              onChange={handleAmenityChange}
+              value="Pool Access"
+              type="checkbox"
+            />
             Pool Access
           </label>
         </div>
@@ -158,6 +263,8 @@ const AddRoom = () => {
         <label className="block mb-2 font-medium">Description</label>
 
         <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           rows="4"
           placeholder="Write room description..."
           className="w-full border border-gray-300 rounded-lg p-3 outline-none focus:border-blue-500 resize-none"
@@ -167,9 +274,10 @@ const AddRoom = () => {
       {/* Button */}
       <button
         type="submit"
+        disabled={loading}
         className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-all duration-300"
       >
-        Add Room
+        {loading ? "Adding Room..." : "Add Room"}
       </button>
     </form>
   );

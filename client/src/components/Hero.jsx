@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { assets, cities } from "../assets/assets";
+import { useAppContext } from "../context/AppContex";
 
 const slides = [
   "https://images.unsplash.com/photo-1507525428034-b723cf961d3e", // beach
@@ -10,7 +11,72 @@ const slides = [
 ];
 
 const Hero = () => {
+  const {
+    navigate,
+    user,
+    getToken,
+    isOwner,
+    setIsOwner,
+    showHotelReg,
+    setShowHotelReg,
+    searchedCities,
+    setSearchedCities,
+    axios,
+    rooms,
+    setRooms,
+  } = useAppContext();
+
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [destination, setDestination] = useState("");
+
+  // Function runs when the search form is submitted
+  const onSearch = async (e) => {
+    // Prevents the page from refreshing after form submission
+    e.preventDefault();
+
+    try {
+      // Redirects the user to the rooms page
+      // Example: /rooms?destination=Kolkata
+      navigate(`/rooms?destination=${destination}`);
+      const token = await getToken();
+      await axios.post(
+        "/api/user/store-recent-search",
+        {
+          recentSearchCity: destination,
+        },
+
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      // Updates the searched cities state
+      setSearchedCities((prevSearchedCities) => {
+        // Creates a new array containing:
+        // 1. All previous searched cities
+        // 2. The newly searched destination
+        const updatedSearchedCities = [...prevSearchedCities, destination];
+
+        // If more than 3 cities are stored
+        if (updatedSearchedCities.length > 3) {
+          // Remove the first (oldest) city
+          // Example:
+          // ["Delhi", "Mumbai", "Pune", "Kolkata"]
+          // becomes
+          // ["Mumbai", "Pune", "Kolkata"]
+          updatedSearchedCities.shift();
+        }
+
+        // Return the updated array
+        // React uses this value as the new state
+        return updatedSearchedCities;
+      });
+    } catch (error) {
+      console.error("Error storing recent search:", error);
+    }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,7 +120,10 @@ const Hero = () => {
             for your next adventure.
           </p>
 
-          <form className="bg-white text-gray-500 rounded-lg px-6 py-4 mt-8 flex flex-col md:flex-row md:items-end gap-4 max-md:w-full shadow-xl">
+          <form
+            onSubmit={onSearch}
+            className="bg-white text-gray-500 rounded-lg px-6 py-4 mt-8 flex flex-col md:flex-row md:items-end gap-4 max-md:w-full shadow-xl"
+          >
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <img src={assets.calenderIcon} className="h-4" alt="" />
@@ -62,6 +131,8 @@ const Hero = () => {
               </div>
 
               <input
+                onChange={(e) => setDestination(e.target.value)}
+                value={destination}
                 list="destinations"
                 id="destinationInput"
                 type="text"
