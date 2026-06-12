@@ -1,4 +1,5 @@
 import transporter from "../config/nodemailer.js";
+import razorpay from "../config/razorpay.js";
 import Booking from "../model/Booking.js";
 import Hotel from "../model/Hotel.js";
 import Room from "../model/Room.js";
@@ -357,6 +358,78 @@ and return the final revenue amount."
   } catch (error) {
     console.log(error);
     res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// razorpay payment
+export const createRazorpayOrder = async (req, res) => {
+  try {
+    const { bookingId } = req.body;
+
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      return res.json({
+        success: false,
+        message: "Booking not found",
+      });
+    }
+
+    const options = {
+      amount: booking.totalPrice * 100,
+      currency: "INR",
+      receipt: booking._id.toString(),
+    };
+
+    const order = await razorpay.orders.create(options);
+
+    booking.razorpayOrderId = order.id;
+
+    await booking.save();
+
+    res.json({
+      success: true,
+      order,
+    });
+  } catch (error) {
+    console.log(error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+export const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { bookingId, razorpay_order_id } = req.body;
+
+    const orderInfo = await razorpay.orders.fetch(razorpay_order_id);
+
+    if (orderInfo.status === "paid") {
+      await Booking.findByIdAndUpdate(bookingId, {
+        isPaid: true,
+        status: "confirmed",
+      });
+
+      return res.json({
+        success: true,
+        message: "PAYMENT SUCCESSFUL",
+      });
+    }
+
+    return res.json({
+      success: false,
+      message: "PAYMENT NOT COMPLETED",
+    });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({
       success: false,
       message: error.message,
     });

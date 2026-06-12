@@ -47,6 +47,91 @@ const MyBookings = () => {
     fetchBooking();
   }, []);
 
+  const handlePayment = async (bookingId) => {
+    try {
+      const token = await getToken();
+
+      // Create Razorpay Order
+      const { data } = await axios.post(
+        "/api/pay/razorpay",
+        { bookingId },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!data.success) {
+        toast.error(data.message);
+        return;
+      }
+
+      const order = data.order;
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+
+        amount: order.amount,
+
+        currency: order.currency,
+
+        name: "QuickStay",
+
+        description: "Hotel Booking",
+
+        order_id: order.id,
+
+        handler: async function (response) {
+          try {
+            const verifyResponse = await axios.post(
+              "/api/pay/verify-payment",
+              {
+                bookingId,
+                razorpay_order_id: response.razorpay_order_id,
+              },
+              {
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                },
+              },
+            );
+
+            if (verifyResponse.data.success) {
+              toast.success("Payment Successful");
+
+              fetchBooking();
+            } else {
+              toast.error("Payment Verification Failed");
+            }
+          } catch (error) {
+            console.log(error);
+            toast.error("Verification Failed");
+          }
+        },
+
+        prefill: {
+          name: user?.fullName || "",
+          email: user?.email || "",
+        },
+
+        theme: {
+          color: "#2563eb",
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+
+      razorpay.open();
+    } catch (error) {
+      console.log(error);
+      console.log(error);
+      console.log(error.response);
+      console.log(error.response?.data);
+      toast.error(error.response?.data?.message || error.message);
+    }
+  };
+
   return (
     <div className="mt-20">
       <Title
@@ -134,7 +219,10 @@ const MyBookings = () => {
               </div>
 
               {!booking.isPaid && (
-                <button className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 transition">
+                <button
+                  onClick={() => handlePayment(booking._id)}
+                  className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 transition"
+                >
                   Pay Now
                 </button>
               )}

@@ -12,6 +12,7 @@ import bookingRouter from "./routers/bookingRoutes.js";
 
 // ADD THIS
 import { v2 as cloudinary } from "cloudinary";
+import paymentRouter from "./routers/paymentRoutes.js";
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use("/api/user", userRouter);
 app.use("/api/hotels", hotelRouter);
 app.use("/api/room", roomRouter);
 app.use("/api/bookings", bookingRouter);
+app.use("/api/pay", paymentRouter);
 
 app.get("/", (req, res) => res.send("API IS WORKING"));
 
