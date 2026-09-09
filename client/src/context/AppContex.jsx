@@ -1,7 +1,7 @@
 import axios from "axios";
 import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser, useAuth } from "@clerk/react";
+import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 
 axios.defaults.baseURL = import.meta.env.VITE_BACKEND_URL;
@@ -10,32 +10,40 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const navigate = useNavigate();
-
-  const { user } = useUser();
-  const { getToken } = useAuth();
+  const { user, loading: authLoading, getToken, logout } = useAuth();
 
   const [isOwner, setIsOwner] = useState(false);
   const [showHotelReg, setShowHotelReg] = useState(false);
   const [searchedCities, setSearchedCities] = useState([]);
   const [rooms, setRooms] = useState([]);
 
-  // getting user
   const fetchUser = async () => {
     try {
+      if (!getToken()) {
+        setIsOwner(false);
+        setSearchedCities([]);
+        return;
+      }
+
       const { data } = await axios.get("/api/user", {
         headers: { Authorization: `Bearer ${await getToken()}` },
       });
+
       if (data.success) {
         setIsOwner(data.role === "hotelOwner");
-        setSearchedCities(data.recentSearchCities);
+        setSearchedCities(data.recentSearchCities || []);
       }
     } catch (error) {
-      toast.error(error.message);
-      console.log(error);
+      if (error.response?.status === 401) {
+        logout();
+        setIsOwner(false);
+      } else {
+        toast.error(error.response?.data?.message || error.message);
+        console.error(error);
+      }
     }
   };
 
-  // getting room data
   const fetchRoom = async () => {
     try {
       const { data } = await axios.get("/api/room");
@@ -44,13 +52,15 @@ export const AppProvider = ({ children }) => {
         setRooms(data.rooms);
       }
     } catch (error) {
-      console.log(error);
+      console.error("ROOM FETCH ERROR:", error);
     }
   };
 
   useEffect(() => {
-    fetchUser();
-  }, [user]);
+    if (!authLoading) {
+      fetchUser();
+    }
+  }, [authLoading, user?.id]);
 
   useEffect(() => {
     fetchRoom();
@@ -60,6 +70,7 @@ export const AppProvider = ({ children }) => {
     navigate,
     user,
     getToken,
+    logout,
     isOwner,
     setIsOwner,
     showHotelReg,
@@ -69,6 +80,7 @@ export const AppProvider = ({ children }) => {
     axios,
     rooms,
     setRooms,
+    authLoading,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
