@@ -4,48 +4,40 @@ import User from "../model/User.js";
 export const registerHotel = async (req, res) => {
   try {
     const { name, address, city, contact } = req.body;
+    const owner = req.userId;
 
-    console.log("BODY:", req.body);
-    console.log("USER ID:", req.auth.userId);
-
-    const { userId: owner } = req.auth();
+    if (!name?.trim() || !address?.trim() || !city?.trim() || !contact?.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "All hotel details are required",
+      });
+    }
 
     const existingHotel = await Hotel.findOne({ owner });
 
-    console.log("EXISTING HOTEL:", existingHotel);
-
     if (existingHotel) {
-      return res.json({
+      return res.status(409).json({
         success: false,
         message: "HOTEL ALREADY REGISTERED",
       });
     }
 
-    const hotel = await Hotel.create({
-      name,
-      address,
-      city,
-      contact,
+    await Hotel.create({
+      name: name.trim(),
+      address: address.trim(),
+      city: city.trim(),
+      contact: contact.trim(),
       owner,
     });
 
-    console.log("HOTEL CREATED:", hotel);
-
-    const user = await User.findByIdAndUpdate(
-      owner,
-      { role: "hotelOwner" },
-      { new: true },
-    );
-
-    console.log("UPDATED USER:", user);
+    await User.findByIdAndUpdate(owner, { role: "hotelOwner" });
 
     return res.json({
       success: true,
       message: "HOTEL REGISTERED SUCCESSFULLY",
     });
   } catch (error) {
-    console.error("REGISTER HOTEL ERROR:");
-    console.error(error);
+    console.error("REGISTER HOTEL ERROR:", error);
 
     return res.status(500).json({
       success: false,
