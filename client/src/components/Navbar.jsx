@@ -1,28 +1,8 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { assets } from "../assets/assets";
-import { useClerk, UserButton, useUser } from "@clerk/react";
 import { useAppContext } from "../context/AppContex";
-
-const BookIcon = () => (
-  <svg
-    className="w-4 h-4 text-gray-700"
-    aria-hidden="true"
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    fill="none"
-    viewBox="0 0 24 24"
-  >
-    <path
-      stroke="currentColor"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M5 19V4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v13H7a2 2 0 0 0-2 2Zm0 0a2 2 0 0 0 2 2h12M9 3v14m7 0v4"
-    />
-  </svg>
-);
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
   const navLinks = [
@@ -32,166 +12,220 @@ const Navbar = () => {
     { name: "About", path: "/about" },
   ];
 
-  const ref = React.useRef(null);
-
   const [isScrolled, setIsScrolled] = React.useState(false);
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [showAccountMenu, setShowAccountMenu] = React.useState(false);
 
-  const { openSignIn } = useClerk();
-  const { user } = useUser();
+  const { user, logout } = useAuth();
+  const { isOwner, setShowHotelReg } = useAppContext();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { isOwner, setIsOwner, showHotelReg, setShowHotelReg } =
-    useAppContext();
-
   React.useEffect(() => {
-    if (location.pathname !== "/") {
-      setIsScrolled(true);
-    } else {
-      setIsScrolled(false);
-    }
+    setIsScrolled(location.pathname !== "/" || window.scrollY > 10);
 
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 10);
+      setIsScrolled(location.pathname !== "/" || window.scrollY > 10);
     };
+
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
 
+  const handleLogout = () => {
+    logout();
+    setShowAccountMenu(false);
+    setIsMenuOpen(false);
+    navigate("/");
+  };
+
   return (
     <nav
-      className={`fixed top-0 left-0  w-full flex items-center justify-between px-4 md:px-16 lg:px-24 xl:px-32 transition-all duration-500 z-50 ${isScrolled ? "bg-white/80 shadow-md text-gray-700 backdrop-blur-lg py-3 md:py-4" : "py-4 md:py-6"}`}
+      className={`fixed left-0 top-0 z-50 flex w-full items-center justify-between px-4 transition-all duration-500 md:px-16 lg:px-24 xl:px-32 ${
+        isScrolled
+          ? "bg-white/80 py-3 text-gray-700 shadow-md backdrop-blur-lg md:py-4"
+          : "py-4 md:py-6"
+      }`}
     >
-      {/* Logo */}
-      <Link to="/">
-        <img src={assets.logo} className="h-9" alt="" />
+      <Link to="/" onClick={() => setIsMenuOpen(false)}>
+        <img src={assets.logo} className="h-9" alt="QuickStay" />
       </Link>
 
-      {/* Desktop Nav */}
-      <div className="hidden md:flex items-center gap-4 lg:gap-8">
-        {navLinks.map((link, i) => (
-          <a
-            key={i}
-            href={link.path}
-            className={`group flex flex-col gap-0.5 ${isScrolled ? "text-gray-700" : "text-white"}`}
-          >
-            {link.name}
-            <div
-              className={`${isScrolled ? "bg-gray-700" : "bg-white"} h-0.5 w-0 group-hover:w-full transition-all duration-300`}
-            />
-          </a>
-        ))}
-
-        {user && (
-          <button
-            onClick={() =>
-              isOwner ? navigate("/owner") : setShowHotelReg(true)
-            }
-            className={`border px-4 py-1 text-sm font-light rounded-full cursor-pointer ${isScrolled ? "text-black" : "text-white"} transition-all`}
-          >
-            {isOwner ? "Dashboard" : "List Your Hotel"}
-          </button>
-        )}
-      </div>
-
-      {/* Desktop Right */}
-      <div className="hidden md:flex items-center gap-4">
-        {/* If user is logged in show Clerk user profile button */}
-        {user ? (
-          // Clerk UserButton opens account/profile popup
-          <UserButton>
-            {/* Custom menu items inside UserButton dropdown */}
-            <UserButton.MenuItems>
-              {/* Custom action button inside dropdown */}
-              <UserButton.Action
-                // Text shown in dropdown -- if i add 2nd option need to add another userButton.action to create another option
-                label="My Bookings"
-                // Icon shown beside text
-                labelIcon={<BookIcon />}
-                // Navigate user to bookings page on click
-                onClick={() => navigate("/my-bookings")}
-              />
-            </UserButton.MenuItems>
-          </UserButton>
-        ) : (
-          // If user NOT logged in show login button
-          <button
-            // Opens Clerk Sign In modal/popup
-            onClick={() => openSignIn()}
-            // Tailwind styling with conditional navbar colors
-            className={`px-8 py-2.5 rounded-full ml-4 transition-all duration-500 ${
-              isScrolled
-                ? "text-white bg-black" // Navbar scrolled style
-                : "bg-white text-black" // Default transparent navbar style
+      <div className="hidden items-center gap-4 md:flex lg:gap-8">
+        {navLinks.map((link) => (
+          <Link
+            key={link.name}
+            to={link.path}
+            className={`group flex flex-col gap-0.5 ${
+              isScrolled ? "text-gray-700" : "text-white"
             }`}
           >
-            {/* Button text */}
-            Login
-          </button>
-        )}
-        <img src={assets.searchIcon} className="h-9" alt="" />
-      </div>
-
-      {/* Mobile Menu Button */}
-      <div
-        onClick={() => setIsMenuOpen((prev) => !prev)}
-        className="flex items-center gap-3 md:hidden"
-      >
-        <img src={assets.menuIcon} className="h-4" alt="" />
-      </div>
-
-      {/* Mobile Menu */}
-      <div
-        className={`fixed top-0 left-0 w-full h-screen bg-white text-base flex flex-col md:hidden items-center justify-center gap-6 font-medium text-gray-800 transition-all duration-500 ${isMenuOpen ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <button
-          className="absolute top-4 right-4"
-          onClick={() => setIsMenuOpen(false)}
-        >
-          <img src={assets.closeIcon} className="h-6" alt="" />
-        </button>
-
-        {navLinks.map((link, i) => (
-          <a key={i} href={link.path} onClick={() => setIsMenuOpen(false)}>
             {link.name}
-          </a>
+            <span
+              className={`${
+                isScrolled ? "bg-gray-700" : "bg-white"
+              } h-0.5 w-0 transition-all duration-300 group-hover:w-full`}
+            />
+          </Link>
         ))}
 
         {user && (
           <button
-            onClick={() =>
-              isOwner ? navigate("/owner") : setShowHotelReg(true)
-            }
-            className="border px-4 py-1 text-sm font-light rounded-full cursor-pointer transition-all"
+            type="button"
+            onClick={() => (isOwner ? navigate("/owner") : setShowHotelReg(true))}
+            className={`rounded-full border px-4 py-1.5 text-sm transition-all ${
+              isScrolled ? "text-black" : "text-white"
+            }`}
           >
             {isOwner ? "Dashboard" : "List Your Hotel"}
           </button>
         )}
+      </div>
 
-        {user ? ( // Clerk UserButton opens account/profile popup
-          <UserButton>
-            {/* Custom menu items inside UserButton dropdown */}
-            <UserButton.MenuItems>
-              {/* Custom action button inside dropdown */}
-              <UserButton.Action
-                // Text shown in dropdown -- if i add 2nd option need to add another userButton.action to create another option
-                label="My Bookings"
-                // Icon shown beside text
-                labelIcon={<BookIcon />}
-                // Navigate user to bookings page on click
-                onClick={() => navigate("/my-bookings")}
+      <div className="hidden items-center gap-4 md:flex">
+        {user ? (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowAccountMenu((current) => !current)}
+              className="flex items-center gap-2 rounded-full border border-gray-200 bg-white/90 px-2 py-1.5 shadow-sm backdrop-blur"
+              aria-expanded={showAccountMenu}
+              aria-haspopup="menu"
+            >
+              <img
+                src={user.image}
+                alt={user.username}
+                className="h-8 w-8 rounded-full object-cover"
               />
-            </UserButton.MenuItems>
-          </UserButton>
+              <span className="hidden max-w-28 truncate text-sm font-semibold text-gray-800 lg:block">
+                {user.username}
+              </span>
+              <span className="px-1 text-xs text-gray-500">⌄</span>
+            </button>
+
+            {showAccountMenu && (
+              <div className="absolute right-0 top-12 z-[80] w-52 overflow-hidden rounded-2xl border border-gray-200 bg-white p-1 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => navigate("/my-bookings")}
+                  className="w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  My Bookings
+                </button>
+                {isOwner && (
+                  <button
+                    type="button"
+                    onClick={() => navigate("/owner")}
+                    className="w-full rounded-xl px-4 py-2.5 text-left text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Owner Dashboard
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full rounded-xl px-4 py-2.5 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+                >
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <button
-            onClick={() => openSignIn()}
-            className="bg-black text-white px-8 py-2.5 rounded-full transition-all duration-500"
+            type="button"
+            onClick={() => navigate("/auth")}
+            className={`ml-4 rounded-full px-8 py-2.5 transition-all duration-300 ${
+              isScrolled ? "bg-black text-white" : "bg-white text-black"
+            }`}
           >
             Login
           </button>
         )}
+
+        <img src={assets.searchIcon} className="h-9" alt="Search" />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setIsMenuOpen((current) => !current)}
+        className="flex items-center gap-3 md:hidden"
+        aria-label="Toggle navigation menu"
+      >
+        <img
+          src={isMenuOpen ? assets.closeIcon : assets.menuIcon}
+          className="h-5"
+          alt=""
+        />
+      </button>
+
+      <div
+        className={`fixed left-0 top-0 z-[70] h-screen w-full bg-white text-base transition-all duration-500 md:hidden ${
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex h-full flex-col items-center justify-center gap-6 font-medium text-gray-800">
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-full p-2 hover:bg-gray-100"
+            onClick={() => setIsMenuOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <img src={assets.closeIcon} className="h-6" alt="" />
+          </button>
+
+          {navLinks.map((link) => (
+            <Link key={link.name} to={link.path} onClick={() => setIsMenuOpen(false)}>
+              {link.name}
+            </Link>
+          ))}
+
+          {user && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                isOwner ? navigate("/owner") : setShowHotelReg(true);
+              }}
+              className="rounded-full border px-5 py-2 text-sm"
+            >
+              {isOwner ? "Dashboard" : "List Your Hotel"}
+            </button>
+          )}
+
+          {user ? (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  navigate("/my-bookings");
+                }}
+                className="rounded-full bg-gray-100 px-5 py-2.5 text-sm"
+              >
+                My Bookings
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="rounded-full bg-black px-5 py-2.5 text-sm text-white"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMenuOpen(false);
+                navigate("/auth");
+              }}
+              className="rounded-full bg-black px-8 py-2.5 text-white"
+            >
+              Login
+            </button>
+          )}
+        </div>
       </div>
     </nav>
   );
