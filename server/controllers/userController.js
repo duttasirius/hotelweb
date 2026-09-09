@@ -1,9 +1,8 @@
 export const getUserData = async (req, res) => {
   try {
-    const role = req.user.role;
-    const recentSearchCities = req.user.recentSearchCities;
+    const { role, recentSearchCities } = req.user;
 
-    res.json({
+    return res.json({
       success: true,
       role,
       recentSearchCities,
@@ -16,28 +15,33 @@ export const getUserData = async (req, res) => {
   }
 };
 
-// store recent search cities from user
+// Store the latest three cities searched by the authenticated user.
 export const storeRecentSearchCities = async (req, res) => {
   try {
-    const { recentSearchCities } = req.body;
+    const city = String(
+      req.body.recentSearchCity ?? req.body.recentSearchCities ?? "",
+    ).trim();
 
-    const user = await req.user;
-
-    if (user.recentSearchCities.length < 3) {
-      user.recentSearchCities.push(recentSearchCities);
-    } else {
-      // if user have more than 3 cities search Remove oldest city (first item)
-      user.recentSearchCities.shift();
-
-      // Add newest city to the end
-      user.recentSearchCities.push(recentSearchCities);
+    if (!city) {
+      return res.status(400).json({
+        success: false,
+        message: "Recent search city is required",
+      });
     }
 
-    await user.save();
+    const recentCities = Array.isArray(req.user.recentSearchCities)
+      ? req.user.recentSearchCities.filter(Boolean)
+      : [];
 
-    res.json({
+    recentCities.push(city);
+    req.user.recentSearchCities = recentCities.slice(-3);
+
+    await req.user.save();
+
+    return res.json({
       success: true,
       message: "CITY ADDED",
+      recentSearchCities: req.user.recentSearchCities,
     });
   } catch (error) {
     return res.status(500).json({
