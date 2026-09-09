@@ -1,27 +1,13 @@
 import React, { useEffect, useState } from "react";
 import Title from "../components/Title";
-import { assets, userBookingsDummyData } from "../assets/assets";
+import { assets } from "../assets/assets";
 import { useAppContext } from "../context/AppContex";
+import { useAuth } from "../context/AuthContext";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { data } from "react-router-dom";
 
 const MyBookings = () => {
-  const {
-    navigate,
-    user,
-    getToken,
-    isOwner,
-    setIsOwner,
-    showHotelReg,
-    setShowHotelReg,
-    searchedCities,
-    setSearchedCities,
-
-    rooms,
-    setRooms,
-  } = useAppContext();
-
+  const { user, getToken } = useAuth();
   const [booking, setBooking] = useState([]);
 
   const fetchBooking = async () => {
@@ -29,16 +15,14 @@ const MyBookings = () => {
       const token = await getToken();
 
       const { data } = await axios.get("/api/bookings/user", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (data.success) {
         setBooking(data.bookings);
       }
     } catch (error) {
-      console.log(error);
+      console.error("BOOKINGS ERROR:", error);
       toast.error(error.response?.data?.message || error.message);
     }
   };
@@ -51,15 +35,10 @@ const MyBookings = () => {
     try {
       const token = await getToken();
 
-      // Create Razorpay Order
       const { data } = await axios.post(
         "/api/pay/razorpay",
         { bookingId },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+        { headers: { Authorization: `Bearer ${token}` } },
       );
 
       if (!data.success) {
@@ -68,20 +47,13 @@ const MyBookings = () => {
       }
 
       const order = data.order;
-
       const options = {
         key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-
         amount: order.amount,
-
         currency: order.currency,
-
         name: "QuickStay",
-
         description: "Hotel Booking",
-
         order_id: order.id,
-
         handler: async function (response) {
           try {
             const verifyResponse = await axios.post(
@@ -90,138 +62,112 @@ const MyBookings = () => {
                 bookingId,
                 razorpay_order_id: response.razorpay_order_id,
               },
-              {
-                headers: {
-                  Authorization: `Bearer ${token}`,
-                },
-              },
+              { headers: { Authorization: `Bearer ${token}` } },
             );
 
             if (verifyResponse.data.success) {
               toast.success("Payment Successful");
-
               fetchBooking();
             } else {
               toast.error("Payment Verification Failed");
             }
           } catch (error) {
-            console.log(error);
+            console.error(error);
             toast.error("Verification Failed");
           }
         },
-
         prefill: {
-          name: user?.fullName || "",
+          name: user?.username || "",
           email: user?.email || "",
         },
-
-        theme: {
-          color: "#2563eb",
-        },
+        theme: { color: "#2563eb" },
       };
 
       const razorpay = new window.Razorpay(options);
-
       razorpay.open();
     } catch (error) {
-      console.log(error);
-      console.log(error);
-      console.log(error.response);
-      console.log(error.response?.data);
+      console.error("PAYMENT ERROR:", error);
       toast.error(error.response?.data?.message || error.message);
     }
   };
 
   return (
-    <div className="mt-20">
+    <div className="mt-20 px-4 pb-20">
       <Title
-        title={"MY BOOKING"}
-        subTitle={
-          "Keep track of your upcoming stays, completed bookings, and booking details."
-        }
+        title="MY BOOKINGS"
+        subTitle="Keep track of your upcoming stays, completed bookings, and booking details."
       />
 
-      <div className="max-w-6xl mx-auto mt-10">
-        {/* Table Header */}
-        <div className="hidden md:grid md:grid-cols-[3fr_2fr_1fr] gap-6 border-b border-gray-200 pb-4 mb-6 text-gray-600 font-medium">
+      <div className="mx-auto mt-10 max-w-6xl">
+        <div className="mb-6 hidden border-b border-gray-200 pb-4 font-medium text-gray-600 md:grid md:grid-cols-[3fr_2fr_1fr] md:gap-6">
           <p>Hotel</p>
           <p>Date & Time</p>
           <p>Payment</p>
         </div>
 
-        {booking.map((booking) => (
+        {booking.map((item) => (
           <div
-            key={booking._id}
-            className="grid md:grid-cols-[3fr_2fr_1fr] gap-6 bg-white border border-gray-200 rounded-3xl p-5 mb-5 shadow-sm hover:shadow-md transition"
+            key={item._id}
+            className="mb-5 grid gap-6 rounded-3xl border border-gray-200 bg-white p-5 shadow-sm transition hover:shadow-md md:grid-cols-[3fr_2fr_1fr]"
           >
-            {/* Hotel Info */}
-            <div className="flex flex-col sm:flex-row gap-5">
+            <div className="flex flex-col gap-5 sm:flex-row">
               <img
-                src={booking.room.images[0]}
-                alt={booking.hotel.name}
-                className="w-full sm:w-40 h-32 object-cover rounded-2xl"
+                src={item.room.images[0]}
+                alt={item.hotel.name}
+                className="h-32 w-full rounded-2xl object-cover sm:w-40"
               />
-
               <div className="space-y-2">
                 <h3 className="text-xl font-semibold text-gray-900">
-                  {booking.hotel.name}
+                  {item.hotel.name}
                   <span className="ml-2 text-sm font-normal text-gray-500">
-                    ({booking.room.roomType})
+                    ({item.room.roomType})
                   </span>
                 </h3>
-
                 <div className="flex items-center gap-2 text-gray-500">
-                  <img src={assets.locationIcon} alt="" className="w-4 h-4" />
-                  <span>{booking.hotel.address}</span>
+                  <img src={assets.locationIcon} alt="" className="h-4 w-4" />
+                  <span>{item.hotel.address}</span>
                 </div>
-
                 <p className="text-lg font-semibold text-blue-600">
-                  ${booking.totalPrice}
+                  ₹{item.totalPrice}
                 </p>
               </div>
             </div>
 
-            {/* Dates */}
             <div className="space-y-4">
               <div>
                 <p className="text-sm text-gray-500">Check In</p>
-
                 <p className="font-medium text-gray-900">
-                  {new Date(booking.checkInDate).toLocaleDateString()}
+                  {new Date(item.checkInDate).toLocaleDateString()}
                 </p>
               </div>
-
               <div>
                 <p className="text-sm text-gray-500">Check Out</p>
-
                 <p className="font-medium text-gray-900">
-                  {new Date(booking.checkOutDate).toLocaleDateString()}
+                  {new Date(item.checkOutDate).toLocaleDateString()}
                 </p>
               </div>
             </div>
 
-            {/* Payment */}
             <div className="flex flex-col justify-center gap-4">
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 rounded-full ${
-                    booking.isPaid ? "bg-green-500" : "bg-red-500"
+                  className={`h-3 w-3 rounded-full ${
+                    item.isPaid ? "bg-green-500" : "bg-red-500"
                   }`}
                 />
-
                 <p
                   className={`font-medium ${
-                    booking.isPaid ? "text-green-600" : "text-red-600"
+                    item.isPaid ? "text-green-600" : "text-red-600"
                   }`}
                 >
-                  {booking.isPaid ? "Paid" : "Unpaid"}
+                  {item.isPaid ? "Paid" : "Unpaid"}
                 </p>
               </div>
 
-              {!booking.isPaid && (
+              {!item.isPaid && (
                 <button
-                  onClick={() => handlePayment(booking._id)}
-                  className="bg-blue-600 text-white px-5 py-2 rounded-xl hover:bg-blue-700 transition"
+                  onClick={() => handlePayment(item._id)}
+                  className="rounded-xl bg-blue-600 px-5 py-2 text-white transition hover:bg-blue-700"
                 >
                   Pay Now
                 </button>
@@ -229,6 +175,12 @@ const MyBookings = () => {
             </div>
           </div>
         ))}
+
+        {!booking.length && (
+          <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-12 text-center text-gray-500">
+            No bookings yet.
+          </div>
+        )}
       </div>
     </div>
   );
