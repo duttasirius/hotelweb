@@ -12,7 +12,9 @@ const sanitizeUser = (user) => ({
 });
 
 const getDefaultImage = (username) =>
-  `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&background=2563eb&color=ffffff`;
+  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+    username,
+  )}&background=2563eb&color=ffffff`;
 
 export const register = async (req, res) => {
   try {
@@ -33,7 +35,10 @@ export const register = async (req, res) => {
     }
 
     const normalizedEmail = email.trim().toLowerCase();
-    const existingUser = await User.findOne({ email: normalizedEmail });
+
+    const existingUser = await User.findOne({
+      email: normalizedEmail,
+    });
 
     if (existingUser) {
       return res.status(409).json({
@@ -52,7 +57,9 @@ export const register = async (req, res) => {
       recentSearchCities: [],
     });
 
-    const token = signToken({ userId: user._id.toString() });
+    const token = signToken({
+      userId: user._id.toString(),
+    });
 
     return res.status(201).json({
       success: true,
@@ -80,12 +87,22 @@ export const login = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    const user = await User.findOne({
+      email: email.trim().toLowerCase(),
+    }).select("+passwordHash");
 
     if (!user) {
       return res.status(401).json({
         success: false,
         message: "Invalid email or password",
+      });
+    }
+
+    if (!user.passwordHash) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "This account does not have a password. Please register again.",
       });
     }
 
@@ -98,7 +115,9 @@ export const login = async (req, res) => {
       });
     }
 
-    const token = signToken({ userId: user._id.toString() });
+    const token = signToken({
+      userId: user._id.toString(),
+    });
 
     return res.json({
       success: true,

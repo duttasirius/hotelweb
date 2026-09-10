@@ -1,3 +1,4 @@
+import "dotenv/config";
 import jwt from "jsonwebtoken";
 
 export const getJwtSecret = () => {
@@ -8,9 +9,12 @@ export const getJwtSecret = () => {
   return process.env.JWT_SECRET;
 };
 
-export const signToken = (payload) =>
-  jwt.sign(payload, getJwtSecret(), {
+export const signToken = (payload) => {
+  return jwt.sign(payload, getJwtSecret(), {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
+};
 
-export const verifyToken = (token) => jwt.verify(token, getJwtSecret());
+export const verifyToken = (token) => {
+  return jwt.verify(token, getJwtSecret());
+};

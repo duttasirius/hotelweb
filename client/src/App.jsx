@@ -1,6 +1,12 @@
 import React from "react";
 import Navbar from "./components/Navbar";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import Home from "./pages/Home";
 import Footer from "./components/Footer";
 import AllRooms from "./pages/AllRooms";
@@ -19,7 +25,7 @@ import { Toaster } from "react-hot-toast";
 
 const App = () => {
   const isOwnerPath = useLocation().pathname.includes("owner");
-  const { showHotelReg, setShowHotelReg, isOwner, authLoading } = useAppContext();
+  const { showHotelReg, isOwner, authLoading } = useAppContext();
   const { user } = useAuth();
 
   if (authLoading) {
@@ -35,23 +41,31 @@ const App = () => {
   return (
     <div className="flex min-h-screen flex-col">
       <Toaster />
+
       {!isOwnerPath && <Navbar />}
+
       {showHotelReg && user && <HotelReg />}
 
       <main className="flex-1">
         <Routes>
           <Route path="/" element={<Home />} />
+
           <Route path="/rooms" element={<AllRooms />} />
+
           <Route path="/rooms/:id" element={<RoomDetails />} />
+
           <Route
             path="/auth"
             element={user ? <Navigate to="/" replace /> : <AuthModalPage />}
           />
+
           <Route
             path="/my-bookings"
             element={user ? <MyBookings /> : <Navigate to="/auth" replace />}
           />
+
           <Route path="/about" element={<About />} />
+
           <Route
             path="/owner"
             element={user && isOwner ? <Layout /> : <Navigate to="/" replace />}
@@ -69,7 +83,7 @@ const App = () => {
 };
 
 const AuthModalPage = () => {
-  const navigate = React.useNavigate();
+  const navigate = useNavigate();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 pt-20">
